@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Permissions {
+  READ
+  WRITE_READ
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderLogStatus {
+  CREATED
+  UPDATED
+  UPDATED_STATUS
+  PAYED
+}
+
+enum orderStatus {
+  KITCHEN
+  SERVED
+  READY
+  COMPLETE
+  CANCELED
+  DELETED
+}
+
+enum UserRole {
+  OWNER
+  EMPLOYEE
+}
+
+enum StockType {
+  g
+  UNIT
+}
+
+model User {
+  id                         String       @id @default(uuid())
+  name                       String
+  email                      String       @unique
+  hashedPassword             String
+  image                      String
+  role                       UserRole
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+  resetTokenPassword         String?
+  resetTokenPasswordValidate DateTime?
+  verifyEmailToken           String?
+  emailVerifiedAt            DateTime?
+  Restaurant                 Restaurant[]
+  Employee                   Employee?
+  Order                      Order[]
+  OrderLog                   Order_Log[]
+}
+
+model Employee {
+  id           String      @id @default(uuid())
+  address      String
+  phone        String
+  permissions  Permissions
+  userId       String      @unique
+  restaurantId String
+  user         User        @relation(fields: [userId], references: [id])
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id])
+}
+
+model Restaurant {
+  id        String     @id @default(uuid())
+  name      String
+  country   String
+  address   String
+  city      String
+  zipCode   String
+  image     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  ownerId   String
+  owner     User       @relation(fields: [ownerId], references: [id])
+  Employee  Employee[]
+  Product   Product[]
+  Menu      Menu[]
+  ApiKey    ApiKey[]
+  Order     Order[]
+  Side      Side[]
+}
+
+model Product {
+  id                      Int                       @id @default(autoincrement())
+  name                    String
+  price                   Float
+  tax                     Float
+  description             String
+  additionalInformation   String
+  image                   String
+  status                  Status
+  categoryId              Int
+  restaurantId            String
+  category                Category                  @relation(fields: [categoryId], references: [id])
+  restaurant              Restaurant                @relation(fields: [restaurantId], references: [id])
+  Menu_Product            Menu_Product[]
+  Restrictions_Product    Restrictions_Product[]
+  Item_Product_Order      Item_Product_Order[]
+  Item_Menu_Product_Order Item_Menu_Product_Order[]
+  Side_Product            Side_Product[]
+}
+
+model Menu {
+  id                    Int               @id @default(autoincrement())
+  name                  String
+  price                 Float
+  discount              Float
+  tax                   Float
+  description           String
+  additionalInformation String
+  image                 String
+  status                Status
+  restaurantId          String
+  optionalDrink         Boolean
+  optionalDesert        Boolean
+  restaurant            Restaurant        @relation(fields: [restaurantId], references: [id])
+  Menu_Product          Menu_Product[]
+  Item_Menu_Order       Item_Menu_Order[]
+}
+
+model Menu_Product {
+  id        Int     @id @default(autoincrement())
+  menuId    Int
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  menu      Menu    @relation(fields: [menuId], references: [id])
+}
+
+model ApiKey {
+  id           String     @id @default(uuid())
+  name         String
+  status       Status
+  api_key      String     @unique
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+}
+
+model Side {
+  id                  Int            @id @default(autoincrement())
+  name                String
+  Stock               Stock?
+  restaurantId        String
+  restaurant          Restaurant     @relation(fields: [restaurantId], references: [id])
+  Complements_Product Side_Product[]
+}
+
+model Side_Product {
+  id         Int     @id @default(autoincrement())
+  sideId     Int
+  productId  Int
+  stockAmout Int
+  Side       Side    @relation(fields: [sideId], references: [id])
+  product    Product @relation(fields: [productId], references: [id])
+}
+
+model Stock {
+  id        Int         @id @default(autoincrement())
+  stock     Int
+  sideId    Int         @unique
+  Side      Side        @relation(fields: [sideId], references: [id])
+  type      StockType
+  Stock_Log Stock_Log[]
+}
+
+model Stock_Log {
+  id        Int      @id @default(autoincrement())
+  cost      Float
+  suplier   String?
+  stock     Int
+  stockId   Int
+  date DateTime @default(now())
+  stockStock Stock @relation(fields: [stockId], references: [id])
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  description String
+  Product     Product[]
+}
+
+model Restrictions {
+  id                   Int                    @id @default(autoincrement())
+  description          String
+  Restrictions_Product Restrictions_Product[]
+}
+
+model Restrictions_Product {
+  id             Int          @id @default(autoincrement())
+  restrictionsId Int
+  productId      Int
+  restriction    Restrictions @relation(fields: [restrictionsId], references: [id])
+  product        Product      @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id                 String               @id @default(uuid())
+  table              String
+  customId           String
+  discount           Float?
+  price              Float
+  invoice            String?
+  observation        String?
+  email              String?
+  tin                String?
+  date               DateTime             @default(now())
+  userId             String?
+  status             orderStatus
+  restaurantId       String
+  user               User?                @relation(fields: [userId], references: [id])
+  restaurant         Restaurant           @relation(fields: [restaurantId], references: [id])
+  Item_Product_Order Item_Product_Order[]
+  Item_Menu_Order    Item_Menu_Order[]
+  OrderLog           Order_Log[]
+}
+
+model Order_Log {
+  id        String         @id @default(uuid())
+  logType   OrderLogStatus
+  orderId   String
+  order     Order          @relation(fields: [orderId], references: [id])
+  userId    String?
+  user      User?          @relation(fields: [userId], references: [id])
+  changes   Json
+  createdAt DateTime       @default(now())
+}
+
+model Item_Product_Order {
+  id        Int     @id @default(autoincrement())
+  quantity  Int
+  productId Int
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Item_Menu_Order {
+  id                      Int                       @id @default(autoincrement())
+  quantity                Int
+  menuId                  Int
+  orderId                 String
+  order                   Order                     @relation(fields: [orderId], references: [id])
+  menu                    Menu                      @relation(fields: [menuId], references: [id])
+  Item_Menu_Product_Order Item_Menu_Product_Order[]
+}
+
+model Item_Menu_Product_Order {
+  id              Int             @id @default(autoincrement())
+  productId       Int
+  ItemMenuOrderId Int
+  product         Product         @relation(fields: [productId], references: [id])
+  Item_Menu_Order Item_Menu_Order @relation(fields: [ItemMenuOrderId], references: [id])
+}
